@@ -39,7 +39,7 @@ def get_vectors(model, seed=None, trajectory=None):
             dist_x = np.random.multivariate_normal([1], np.eye(1), layer.shape).reshape(layer.shape)
             dist_y = np.random.multivariate_normal([1], np.eye(1), layer.shape).reshape(layer.shape)
             vector_x.append(dist_x*layer / np.linalg.norm(dist_x))
-            vector_y.append(dist_y*layer / np.linalg.norm(dist_x))
+            vector_y.append(dist_y*layer / np.linalg.norm(dist_y))
     
     return model.get_weights(), vector_x, vector_y
 
