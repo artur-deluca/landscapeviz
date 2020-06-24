@@ -46,14 +46,14 @@ def get_vectors(model, seed=None, trajectory=None):
 def build_mesh(model, data, grid_lenght, extension=1, verbose=True, seed=None, trajectory=None):
 
     logging.basicConfig(level=logging.INFO)
-    #obj_fn = build_obj_fn(model, data)
 
     def obj_fn(model, data, solution):
-        new_model = tf.keras.models.clone_model(model)
-        new_model.set_weights(solution)
-        new_model.compile(optimizer=model.optimizer, loss=model.loss, metrics=model.metrics)
-        value = new_model.evaluate(data[0], data[1], verbose=0)
-        del new_model
+
+        old_weights = model.get_weights()
+        model.set_weights(solution)
+        value = model.evaluate(data[0], data[1], verbose=0)
+        model.set_weights(old_weights)
+
         return value
      
     with h5py.File("meshfile.hdf5", "w") as f:
