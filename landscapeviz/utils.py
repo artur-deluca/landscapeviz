@@ -58,8 +58,8 @@ def build_mesh(model, data, grid_length, extension=1, filename="meshfile", verbo
      
     with h5py.File("{}.hdf5".format(filename), "w") as f:
 
-        z_keys = ["Z_" + model.loss]
-        z_keys += [metric.name for metric in model.metrics]
+        z_keys = model.metrics_names
+        z_keys[0] = "Z_" + model.loss
         z_dict = {}
 
         for metric in z_keys:
@@ -88,3 +88,15 @@ def build_mesh(model, data, grid_length, extension=1, filename="meshfile", verbo
 
         for metric in z_keys:
             f[metric] = z_dict[metric]
+
+
+def store_metrics(model, data, filename):
+    metrics = model.metrics_names
+    metrics[0] = model.loss
+
+    with h5py.File("./files/{}.hdf5".format(filename), "a") as f:
+        train = model.evaluate(x=data[0], y=data[1], verbose=0)
+        validation = model.evaluate(x=data[2], y=data[3], verbose=0)
+        for i, key in enumerate(metrics):
+            f["{}_train".format(key)] = train[i]
+            f["{}_validation".format(key)] = validation[i]
