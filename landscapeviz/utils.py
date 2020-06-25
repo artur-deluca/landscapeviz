@@ -43,7 +43,7 @@ def get_vectors(model, seed=None, trajectory=None):
     
     return model.get_weights(), vector_x, vector_y
 
-def build_mesh(model, data, grid_length, extension=1, verbose=True, seed=None, trajectory=None):
+def build_mesh(model, data, grid_length, extension=1, filename="meshfile", verbose=True, seed=None, trajectory=None):
 
     logging.basicConfig(level=logging.INFO)
 
@@ -56,15 +56,15 @@ def build_mesh(model, data, grid_length, extension=1, verbose=True, seed=None, t
 
         return value
      
-    with h5py.File("meshfile.hdf5", "w") as f:
+    with h5py.File("{}.hdf5".format(filename), "w") as f:
 
         z_keys = ["Z_" + model.loss]
         z_keys += [metric.name for metric in model.metrics]
         z_dict = {}
 
         for metric in z_keys:
-            filename = os.path.join(mkdtemp(), metric + '.dat')
-            z_dict[metric] = np.memmap(filename, dtype='float32', mode='w+', shape=(grid_length, grid_length))
+            tfile = os.path.join(mkdtemp(), metric + '.dat')
+            z_dict[metric] = np.memmap(tfile, dtype='float32', mode='w+', shape=(grid_length, grid_length))
 
         # get vectors and set spacing
         origin, vector_x, vector_y  = get_vectors(model, seed=seed, trajectory=trajectory)
