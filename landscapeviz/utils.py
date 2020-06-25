@@ -49,14 +49,16 @@ def build_mesh(model, data, grid_length, extension=1, filename="meshfile", verbo
 
     def obj_fn(model, data, solution):
 
+        print(hex(id(model)))        
         old_weights = model.get_weights()
         model.set_weights(solution)
         value = model.evaluate(data[0], data[1], verbose=0)
         model.set_weights(old_weights)
 
         return value
-     
-    with h5py.File("{}.hdf5".format(filename), "w") as f:
+    
+    os.makedirs('./files', exist_ok=True) 
+    with h5py.File(".files/{}.hdf5".format(filename), "w") as f:
 
         z_keys = model.metrics_names
         z_keys[0] = "Z_" + model.loss
