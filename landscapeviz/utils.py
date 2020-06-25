@@ -43,7 +43,7 @@ def get_vectors(model, seed=None, trajectory=None):
     
     return model.get_weights(), vector_x, vector_y
 
-def build_mesh(model, data, grid_lenght, extension=1, verbose=True, seed=None, trajectory=None):
+def build_mesh(model, data, grid_length, extension=1, verbose=True, seed=None, trajectory=None):
 
     logging.basicConfig(level=logging.INFO)
 
@@ -64,19 +64,19 @@ def build_mesh(model, data, grid_lenght, extension=1, verbose=True, seed=None, t
 
         for metric in z_keys:
             filename = os.path.join(mkdtemp(), metric + '.dat')
-            z_dict[metric] = np.memmap(filename, dtype='float32', mode='w+', shape=(grid_lenght, grid_lenght))
+            z_dict[metric] = np.memmap(filename, dtype='float32', mode='w+', shape=(grid_length, grid_length))
 
         # get vectors and set spacing
         origin, vector_x, vector_y  = get_vectors(model, seed=seed, trajectory=trajectory)
-        spacing = np.linspace(-extension, extension, grid_lenght)
+        spacing = np.linspace(-extension, extension, grid_length)
 
         f["X"], f["Y"] = np.meshgrid(spacing, spacing)
 
-        for i in range(grid_lenght):
+        for i in range(grid_length):
             if verbose:
-                logging.info("line {} out of {}".format(i, grid_lenght))
+                logging.info("line {} out of {}".format(i, grid_length))
 
-            for j in range(grid_lenght):
+            for j in range(grid_length):
                 solution = [
                     origin[x] + f["X"][i][j] * vector_x[x] + f["Y"][i][j] * vector_y[x]
                     for x in range(len(origin))

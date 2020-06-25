@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
     model = build_model()
     model.fit(X_train, y_train, batch_size=32, epochs=60, verbose=0, callbacks=[checkpoint])
-    landscapeviz.build_mesh(model, (X_train, y_train), grid_lenght=40, extension=10, verbose=1, seed=seed)
+    landscapeviz.build_mesh(model, (X_train, y_train), grid_length=40, extension=10, verbose=1, seed=seed)
     landscapeviz.plot_contour(key=None, trajectory="./weights")
     landscapeviz.plot_3d(log=False)
 
