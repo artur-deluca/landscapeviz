@@ -33,14 +33,13 @@ X_train = scaler_x.transform(X_train)
 X_test = scaler_x.transform(X_test)
 
 # 3. train model
-
 model.fit(X_train, y_train, batch_size=32, epochs=60, verbose=0)
 
 
 # 4. build mesh and plot
-landscapeviz.build_mesh(model, (X_train, y_train), grid_lenght=40)
-landscapeviz.plot_contour()
-landscapeviz.plot_3d(key="categorical_hinge", log=False)
+landscapeviz.build_mesh(model, (X_train, y_train), grid_length=40, verbose=0)
+landscapeviz.plot_contour(key="sparse_categorical_crossentropy")
+landscapeviz.plot_3d(key="sparse_categorical_crossentropy")
 ```
 
 
