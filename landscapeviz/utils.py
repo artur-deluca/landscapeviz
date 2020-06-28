@@ -2,103 +2,122 @@ import h5py
 import logging
 import numpy as np
 import os
+import gc
+import resource
 import tensorflow as tf
 
-from memory_profiler import profile
-from functools import reduce, partial
 from tempfile import mkdtemp
 from sklearn.decomposition import PCA
 
 from .trajectory import load_weights, weight_encoder
 
+
 def get_vectors(model, seed=None, trajectory=None):
 
     np.random.seed(seed)
     vector_x, vector_y = list(), list()
+    weights = model.get_weights()
 
     if trajectory:
+        # this has to be re-written
         load_weights(model, trajectory)
-        file_path = os.path.join(trajectory, ".trajectory", "model_weights.hdf5")
+        file_path = os.path.join(
+            trajectory, ".trajectory", "model_weights.hdf5")
+
         with h5py.File(file_path, "r+") as f:
             differences = list()
             trajectory = np.array(f["weights"])
-            for i in range(1, len(trajectory)):
-                differences.append(trajectory[i]-trajectory[i-1])
+            for i in range(0, len(trajectory)-1):
+                differences.append(trajectory[i]-trajectory[-1])
+
             pca = PCA(n_components=2)
             pca.fit(np.array(differences))
-            #print(differences)
-            f["X"], f["Y"] = pca.transform(np.array(trajectory)).T
-            #print(pca.transform(np.array(differences)).T)
+            f["X"], f["Y"] = pca.transform(np.array(differences)).T
+
         vector_x = weight_encoder(model, pca.components_[0])
         vector_y = weight_encoder(model, pca.components_[1])
-        return model.get_weights(), vector_x, vector_y
-    
+
+        return weights, vector_x, vector_y
+
     else:
-        for layer in model.get_weights():
+        cast = np.array([1]).T
+        for layer in weights:
             # set standard normal parameters
-            dist_x = np.random.multivariate_normal([1], np.eye(1), layer.shape).reshape(layer.shape)
-            dist_y = np.random.multivariate_normal([1], np.eye(1), layer.shape).reshape(layer.shape)
-            vector_x.append(dist_x*layer / np.linalg.norm(dist_x))
-            vector_y.append(dist_y*layer / np.linalg.norm(dist_y))
-    
-    return model.get_weights(), vector_x, vector_y
+            # filter-wise normalization
+            k = len(layer.shape) - 1
+            d = np.random.multivariate_normal(
+                [0], np.eye(1), layer.shape).reshape(layer.shape)
+            dist_x = (
+                d/(1e-10 + cast*np.linalg.norm(d, axis=k))[:, np.newaxis]).reshape(d.shape)
+
+            vector_x.append(
+                (dist_x * (cast*np.linalg.norm(layer, axis=k))
+                 [:, np.newaxis]).reshape(d.shape)
+            )
+
+            d = np.random.multivariate_normal(
+                [0], np.eye(1), layer.shape).reshape(layer.shape)
+            dist_y = (
+                d/(1e-10 + cast*np.linalg.norm(d, axis=k))[:, np.newaxis]).reshape(d.shape)
+
+            vector_y.append(
+                (dist_y * (cast*np.linalg.norm(layer, axis=k))
+                 [:, np.newaxis]).reshape(d.shape)
+            )
+
+        return weights, vector_x, vector_y
+
+
+def _obj_fn(model, data, solution):
+
+    old_weights = model.get_weights()
+    model.set_weights(solution)
+    value = model.evaluate(data[0], data[1], verbose=0)
+    model.set_weights(old_weights)
+
+    return value
+
 
 def build_mesh(model, data, grid_length, extension=1, filename="meshfile", verbose=True, seed=None, trajectory=None):
 
     logging.basicConfig(level=logging.INFO)
 
-    def obj_fn(model, data, solution):
+    z_keys = model.metrics_names
+    z_keys[0] = model.loss
+    Z = list()
 
-        print(hex(id(model)))        
-        old_weights = model.get_weights()
-        model.set_weights(solution)
-        value = model.evaluate(data[0], data[1], verbose=0)
-        model.set_weights(old_weights)
+    # get vectors and set spacing
+    origin, vector_x, vector_y = get_vectors(
+        model, seed=seed, trajectory=trajectory)
+    space = np.linspace(-extension, extension, grid_length)
 
-        return value
-    
-    os.makedirs('./files', exist_ok=True) 
-    with h5py.File(".files/{}.hdf5".format(filename), "w") as f:
+    X, Y = np.meshgrid(space, space)
 
-        z_keys = model.metrics_names
-        z_keys[0] = "Z_" + model.loss
-        z_dict = {}
+    for i in range(grid_length):
+        if verbose:
+            logging.info("line {} out of {}".format(i, grid_length))
 
-        for metric in z_keys:
-            tfile = os.path.join(mkdtemp(), metric + '.dat')
-            z_dict[metric] = np.memmap(tfile, dtype='float32', mode='w+', shape=(grid_length, grid_length))
+        for j in range(grid_length):
+            solution = [
+                origin[x] + X[i][j] * vector_x[x] +
+                Y[i][j] * vector_y[x]
+                for x in range(len(origin))
+            ]
 
-        # get vectors and set spacing
-        origin, vector_x, vector_y  = get_vectors(model, seed=seed, trajectory=trajectory)
-        spacing = np.linspace(-extension, extension, grid_length)
+            Z.append(_obj_fn(model, data, solution))
 
-        f["X"], f["Y"] = np.meshgrid(spacing, spacing)
+    Z = np.array(Z)
+    os.makedirs('./files', exist_ok=True)
 
-        for i in range(grid_length):
-            if verbose:
-                logging.info("line {} out of {}".format(i, grid_length))
+    with h5py.File("./files/{}.hdf5".format(filename), "w") as f:
 
-            for j in range(grid_length):
-                solution = [
-                    origin[x] + f["X"][i][j] * vector_x[x] + f["Y"][i][j] * vector_y[x]
-                    for x in range(len(origin))
-                ]
-                obj_value = obj_fn(model, data, solution)
+        f["space"] = space
+        original_results = _obj_fn(model, data, origin)
 
-                for index, metric in enumerate(z_keys):
-                    z_dict[metric][i][j] = obj_value[index]
+        for i, metric in enumerate(z_keys):
+            f["original_" + metric] = original_results[i]
+            f[metric] = Z[:, i].reshape(X.shape)
+        f.close()
 
-        for metric in z_keys:
-            f[metric] = z_dict[metric]
-
-
-def store_metrics(model, data, filename):
-    metrics = model.metrics_names
-    metrics[0] = model.loss
-
-    with h5py.File("./files/{}.hdf5".format(filename), "a") as f:
-        train = model.evaluate(x=data[0], y=data[1], verbose=0)
-        validation = model.evaluate(x=data[2], y=data[3], verbose=0)
-        for i, key in enumerate(metrics):
-            f["{}_train".format(key)] = train[i]
-            f["{}_validation".format(key)] = validation[i]
+    del Z
+    gc.collect()
