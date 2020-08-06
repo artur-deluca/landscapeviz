@@ -1,4 +1,5 @@
 # Visualizing the Loss Landscape of Neural Networks
+> <b>Application showcasing landscapeviz [here](https://landscapeviz.herokuapp.com/)</b>
 
 <p align="center">
   <img width="350" height="350" src="/docs/img/countour.svg">
@@ -10,8 +11,6 @@ This repository is an implementation of the paper
 > Hao Li, Zheng Xu, Gavin Taylor, Christoph Studer and Tom Goldstein. [*Visualizing the Loss Landscape of Neural Nets*](https://arxiv.org/abs/1712.09913). NIPS, 2018.
 
 This code was implemented in tensorflow 2.0. The authors also have an [implementation](https://github.com/tomgoldstein/loss-landscape) using pytorch.
-
-There's also a fun application showcasing landscapeviz [here](https://landscapeviz.herokuapp.com/)
 
 ## How to use
 ```python
