@@ -36,6 +36,6 @@ def weight_encoder(model, solution):
     for i in range(len(weights)):
         weight_shape = weights[i].shape
         finish = np.prod(weight_shape)
-        weights[i] = np.reshape(solution[start:start + finish], weight_shape)
+        weights[i] = np.reshape(solution[start : start + finish], weight_shape)
         start += finish
     return weights
