@@ -1,5 +1,5 @@
 # Visualizing the Loss Landscape of Neural Networks
-> <b>Application showcasing landscapeviz [here](https://landscapeviz.herokuapp.com/)</b>
+> <b>Application showcasing landscapeviz [here](http://arturdeluca.pythonanywhere.com/)</b>
 
 <p align="center">
   <img width="350" height="350" src="/docs/img/countour.svg">
